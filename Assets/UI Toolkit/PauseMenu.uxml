@@ -1,0 +1,16 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/Style.uss?fileID=7433441132597879392&amp;guid=e8fbef8daa7fa3d4ca1b3d1beeb1fdd3&amp;type=3#Style" />
+    
+    <ui:VisualElement name="PauseMenu" class="pause-container" style="display: none;">
+        <ui:VisualElement name="PausePanel" class="menu-panel">
+            <ui:Label text="PAUSED" class="title" />
+            
+            <ui:VisualElement name="PauseButtons" class="button-container">
+                <ui:Button text="Resume" name="ResumeButton" class="menu-button" />
+                <ui:Button text="Settings" name="PauseSettingsButton" class="menu-button" />
+                <ui:Button text="Main Menu" name="MainMenuButton" class="menu-button" />
+                <ui:Button text="Quit" name="PauseQuitButton" class="menu-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
