@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
@@ -17,7 +18,12 @@ public class GameManager : MonoBehaviour
     [Tooltip("UI hiển thị số Zombie đã kill")]
     public Text killText;
     
-    private PauseMenuController pauseMenuController;
+    private PauseCanvasController pauseCanvasController;
+    
+    // Network players tracking
+    private List<NetworkPlayer> networkPlayers = new List<NetworkPlayer>();
+    
+    public bool IsMultiplayer => networkPlayers.Count > 0;
     
     void Awake()
     {
@@ -37,7 +43,7 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         // Tìm pause menu controller trong scene
-        pauseMenuController = FindObjectOfType<PauseMenuController>();
+        pauseCanvasController = FindObjectOfType<PauseCanvasController>();
         
         // Lock cursor khi bắt đầu game
         if (SceneManager.GetActiveScene().name != "MainMenu")
@@ -48,10 +54,10 @@ public class GameManager : MonoBehaviour
     
     void Update()
     {
-        // Refresh pause menu controller reference nếu cần
-        if (pauseMenuController == null)
+        // Refresh pause canvas controller reference nếu cần
+        if (pauseCanvasController == null)
         {
-            pauseMenuController = FindObjectOfType<PauseMenuController>();
+            pauseCanvasController = FindObjectOfType<PauseCanvasController>();
         }
     }
 
@@ -166,6 +172,48 @@ public class GameManager : MonoBehaviour
     
     public bool IsGamePaused()
     {
-        return pauseMenuController != null && pauseMenuController.IsPaused();
+        return pauseCanvasController != null && pauseCanvasController.IsPaused();
     }
+    
+    #region Network Player Management
+    
+    public void RegisterNetworkPlayer(NetworkPlayer player)
+    {
+        if (player != null && !networkPlayers.Contains(player))
+        {
+            networkPlayers.Add(player);
+            Debug.Log($"Network player registered. Total players: {networkPlayers.Count}");
+        }
+    }
+    
+    public void UnregisterNetworkPlayer(NetworkPlayer player)
+    {
+        if (player != null && networkPlayers.Contains(player))
+        {
+            networkPlayers.Remove(player);
+            Debug.Log($"Network player unregistered. Total players: {networkPlayers.Count}");
+        }
+    }
+    
+    public List<NetworkPlayer> GetNetworkPlayers()
+    {
+        return new List<NetworkPlayer>(networkPlayers);
+    }
+    
+    public int GetNetworkPlayerCount()
+    {
+        return networkPlayers.Count;
+    }
+    
+    public NetworkPlayer GetLocalNetworkPlayer()
+    {
+        foreach (var player in networkPlayers)
+        {
+            if (player != null && player.IsLocalPlayer)
+                return player;
+        }
+        return null;
+    }
+    
+    #endregion
 }

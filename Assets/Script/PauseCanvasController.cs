@@ -27,6 +27,11 @@ public class PauseCanvasController : MonoBehaviour
 
     private bool isPaused = false;
 
+    public bool IsPaused()
+    {
+        return isPaused;
+    }
+
     private void OnEnable()
     {
         // Đăng ký sự kiện cho các nút nếu được gán
@@ -110,7 +115,16 @@ public class PauseCanvasController : MonoBehaviour
 
     private void OnRestartClicked()
     {
-        // Restart lại scene hiện tại
+        bool isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        
+        if (isOnlineMode)
+        {
+            // Online mode: không cho restart từ pause menu, chỉ cho phép khi game over
+            Debug.Log("Restart không khả dụng trong chế độ online từ pause menu");
+            return;
+        }
+        
+        // Solo mode: Restart ngay lập tức
         Time.timeScale = 1f;
         var scene = SceneManager.GetActiveScene();
         SceneManager.LoadScene(scene.name);
@@ -125,6 +139,15 @@ public class PauseCanvasController : MonoBehaviour
 
     private void OnQuitClicked()
     {
+        // Kiểm tra online mode để disconnect trước khi về main menu
+        bool isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        
+        if (isOnlineMode)
+        {
+            // Ngắt kết nối mạng trước khi về main menu
+            _ = FusionNetworkManager.Instance.Disconnect();
+        }
+        
         // Có thể về main menu hoặc thoát hẳn game
         if (!string.IsNullOrEmpty(mainMenuSceneName))
         {
@@ -151,18 +174,12 @@ public class PauseCanvasController : MonoBehaviour
 
     private void OnPCModeClicked()
     {
-        if (InputModeManager.Instance != null)
-        {
-            InputModeManager.Instance.SetPCMode();
-        }
+        // Mode switching removed - cả PC và Mobile input đều hoạt động cùng lúc
     }
 
     private void OnMobileModeClicked()
     {
-        if (InputModeManager.Instance != null)
-        {
-            InputModeManager.Instance.SetMobileMode();
-        }
+        // Mode switching removed - cả PC và Mobile input đều hoạt động cùng lúc
     }
 
     private void DisablePlayerControls()

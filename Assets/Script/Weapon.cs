@@ -48,32 +48,21 @@ public class Weapon : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
-
-        // PC mode: bắn bằng chuột như code cũ
-        if (!isMobile)
+        // PC input (chuột) - luôn hoạt động để test
+        bool mouseWantsToShoot = false;
+        if (fireMode == FireMode.Automatic)
         {
-            if (fireMode == FireMode.Automatic)
-            {
-                isShooting = Input.GetKey(KeyCode.Mouse0);
-            }
-            else if (fireMode == FireMode.Burst || fireMode == FireMode.Single)
-            {
-                isShooting = Input.GetKeyDown(KeyCode.Mouse0);
-            }
-
-            if (isShooting)
-            {
-                TryShoot();
-            }
+            mouseWantsToShoot = Input.GetKey(KeyCode.Mouse0);
         }
-        else
+        else if (fireMode == FireMode.Burst || fireMode == FireMode.Single)
         {
-            // Mobile mode: chỉ bắn khi nút bắn Mobile báo đang giữ (isShooting)
-            if (isShooting)
-            {
-                TryShoot();
-            }
+            mouseWantsToShoot = Input.GetKeyDown(KeyCode.Mouse0);
+        }
+
+        // Mobile: isShooting được set bởi OnMobileFireButtonDown/Up
+        if (mouseWantsToShoot || isShooting)
+        {
+            TryShoot();
         }
         if (Input.GetKeyDown(KeyCode.R) && bulletsLeft < magazineSize && !isReloading)
         {
@@ -93,38 +82,24 @@ public class Weapon : MonoBehaviour
     // Gọi từ nút bắn Mobile (UI Button OnClick)
     public void OnMobileFireButtonPressed()
     {
-        // Chỉ xử lý khi đang ở chế độ Mobile
-        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
-            return;
-
         TryShoot();
     }
 
     // Gọi khi giữ nút bắn Mobile (Pointer Down)
     public void OnMobileFireButtonDown()
     {
-        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
-            return;
-
         isShooting = true;
     }
 
     // Gọi khi nhả nút bắn Mobile (Pointer Up)
     public void OnMobileFireButtonUp()
     {
-        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
-            return;
-
         isShooting = false;
     }
 
     // Gọi từ nút Reload Mobile (UI Button OnClick)
     public void OnMobileReloadButtonPressed()
     {
-        // Chỉ xử lý khi đang ở chế độ Mobile
-        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
-            return;
-
         if (bulletsLeft < magazineSize && !isReloading)
         {
             Reload();
@@ -248,20 +223,8 @@ public class Weapon : MonoBehaviour
 
     Vector3 GetSpreadDirection()
     {
-        // Xác định điểm trên màn hình để bắn
-        // PC: dùng vị trí chuột
-        // Mobile: dùng tâm màn hình (trùng hồng tâm UI ở giữa)
-        Vector3 screenPoint;
-        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
-
-        if (isMobile)
-        {
-            screenPoint = new Vector3(Screen.width / 2f, Screen.height / 2f, 0f);
-        }
-        else
-        {
-            screenPoint = Input.mousePosition;
-        }
+        // Luôn dùng tâm màn hình (crosshair ở giữa) cho Android
+        Vector3 screenPoint = new Vector3(Screen.width / 2f, Screen.height / 2f, 0f);
 
         Ray ray = playerCamera.ScreenPointToRay(screenPoint);
         RaycastHit hit;

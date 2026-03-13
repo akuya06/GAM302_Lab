@@ -2,18 +2,216 @@
     <Style src="project://database/Assets/UI%20Toolkit/Style.uss?fileID=7433441132597879392&amp;guid=e8fbef8daa7fa3d4ca1b3d1beeb1fdd3&amp;type=3#Style" />
     
     <ui:VisualElement name="MainMenu" class="menu-container">
-        <!-- Dark overlay on top of the background image for readability -->
         <ui:VisualElement name="MenuOverlay" class="menu-overlay">
-            <ui:VisualElement name="MenuPanel" class="menu-panel">
+            
+            <!-- MAIN MENU PANEL -->
+            <ui:VisualElement name="MainMenuPanel" class="menu-panel">
                 <ui:Label text="Zombie Killer" class="title" />
+                <ui:Label text="Online Co-op" class="subtitle" />
 
                 <ui:VisualElement name="MenuButtons" class="button-container">
-                    <ui:Button text="New Game" name="NewGameButton" class="menu-button pause-button" />
-                    <ui:Button text="Continue" name="ContinueButton" class="menu-button pause-button" />
+                    <ui:Button text="Play Online" name="PlayOnlineButton" class="menu-button pause-button primary-button" />
+                    <ui:Button text="Solo Mode" name="SoloModeButton" class="menu-button pause-button" />
                     <ui:Button text="Settings" name="SettingsButton" class="menu-button pause-button" />
-                    <ui:Button text="Quit" name="QuitButton" class="menu-button pause-button" />
+                    <ui:Button text="Quit" name="QuitButton" class="menu-button pause-button danger-button" />
+                </ui:VisualElement>
+                
+                <ui:Label name="VersionLabel" text="v1.0.0" class="version-label" />
+            </ui:VisualElement>
+            
+            <!-- ONLINE MENU PANEL -->
+            <ui:VisualElement name="OnlineMenuPanel" class="menu-panel hidden">
+                <ui:Label text="Online Mode" class="title" />
+                
+                <ui:VisualElement name="OnlineButtons" class="button-container">
+                    <ui:Button text="Create Room" name="CreateRoomButton" class="menu-button pause-button primary-button" />
+                    <ui:Button text="Join Room" name="JoinRoomButton" class="menu-button pause-button" />
+                    <ui:Button text="Quick Match" name="QuickMatchButton" class="menu-button pause-button" />
+                    <ui:Button text="Back" name="OnlineBackButton" class="menu-button pause-button back-button" />
                 </ui:VisualElement>
             </ui:VisualElement>
+            
+            <!-- CREATE ROOM PANEL -->
+            <ui:VisualElement name="CreateRoomPanel" class="menu-panel hidden">
+                <ui:Label text="Create Room" class="title" />
+                
+                <ui:VisualElement class="form-container">
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="Room Name" class="form-label" />
+                        <ui:TextField name="CreateRoomNameInput" class="text-input" placeholder-text="Enter room name..." />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="Max Players" class="form-label" />
+                        <ui:SliderInt name="MaxPlayersSlider" low-value="2" high-value="8" value="4" class="slider-input" />
+                        <ui:Label name="MaxPlayersLabel" text="4" class="slider-value" />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Toggle name="PasswordToggle" label="Require Password" class="toggle-input" />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement name="PasswordInputGroup" class="form-group hidden">
+                        <ui:Label text="Password" class="form-label" />
+                        <ui:TextField name="CreateRoomPasswordInput" class="text-input" placeholder-text="Enter password..." password="true" />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Toggle name="PrivateRoomToggle" label="Private Room" class="toggle-input" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="button-row">
+                    <ui:Button text="Back" name="CreateRoomBackButton" class="menu-button pause-button back-button half-button" />
+                    <ui:Button text="Create" name="ConfirmCreateRoomButton" class="menu-button pause-button primary-button half-button" />
+                </ui:VisualElement>
+                
+                <ui:Label name="CreateRoomStatusLabel" text="" class="status-label" />
+            </ui:VisualElement>
+            
+            <!-- JOIN ROOM PANEL -->
+            <ui:VisualElement name="JoinRoomPanel" class="menu-panel hidden">
+                <ui:Label text="Join Room" class="title" />
+                
+                <ui:VisualElement class="form-container">
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="Room ID / Name" class="form-label" />
+                        <ui:TextField name="JoinRoomIdInput" class="text-input" placeholder-text="Enter room ID..." />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="Password (if required)" class="form-label" />
+                        <ui:TextField name="JoinRoomPasswordInput" class="text-input" placeholder-text="Enter password..." password="true" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="button-row">
+                    <ui:Button text="Back" name="JoinRoomBackButton" class="menu-button pause-button back-button half-button" />
+                    <ui:Button text="Join" name="ConfirmJoinRoomButton" class="menu-button pause-button primary-button half-button" />
+                </ui:VisualElement>
+                
+                <ui:Label name="JoinRoomStatusLabel" text="" class="status-label" />
+            </ui:VisualElement>
+            
+            <!-- ROOM BROWSER PANEL -->
+            <ui:VisualElement name="RoomBrowserPanel" class="menu-panel wide-panel hidden">
+                <ui:Label text="Room Browser" class="title" />
+                
+                <ui:VisualElement class="search-bar">
+                    <ui:TextField name="SearchRoomInput" class="text-input search-input" placeholder-text="Search rooms..." />
+                    <ui:Button text="Refresh" name="RefreshRoomsButton" class="menu-button pause-button small-button" />
+                </ui:VisualElement>
+                
+                <ui:ScrollView name="RoomListScrollView" class="room-list-scroll">
+                    <ui:VisualElement name="RoomListContainer" class="room-list-container">
+                        <!-- Room items will be added dynamically -->
+                    </ui:VisualElement>
+                </ui:ScrollView>
+                
+                <ui:VisualElement class="button-row">
+                    <ui:Button text="Back" name="RoomBrowserBackButton" class="menu-button pause-button back-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <!-- LOBBY PANEL -->
+            <ui:VisualElement name="LobbyPanel" class="menu-panel wide-panel hidden">
+                <ui:VisualElement class="lobby-header">
+                    <ui:Label name="LobbyRoomName" text="Room: ..." class="title" />
+                    <ui:Label name="LobbyRoomId" text="ID: ABC123" class="room-id-label" />
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="lobby-content">
+                    <ui:VisualElement class="player-list-container">
+                        <ui:Label text="Players" class="section-title" />
+                        <ui:ScrollView name="PlayerListScrollView" class="player-list-scroll">
+                            <ui:VisualElement name="PlayerListContainer" class="player-list">
+                                <!-- Player items will be added dynamically -->
+                            </ui:VisualElement>
+                        </ui:ScrollView>
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="lobby-info">
+                        <ui:Label name="PlayerCountLabel" text="Players: 1/4" class="info-label" />
+                        <ui:Label name="RoomStatusLabel" text="Waiting for players..." class="info-label" />
+                        
+                        <ui:VisualElement name="HostControls" class="host-controls">
+                            <ui:Label text="Game Settings" class="section-title" />
+                            <ui:VisualElement class="form-group">
+                                <ui:Label text="Difficulty" class="form-label" />
+                                <ui:DropdownField name="DifficultyDropdown" choices="Easy,Normal,Hard,Nightmare" index="1" class="dropdown-input" />
+                            </ui:VisualElement>
+                            <ui:VisualElement class="form-group">
+                                <ui:Label text="Map" class="form-label" />
+                                <ui:DropdownField name="MapDropdown" choices="City,Forest,Hospital,Factory" index="0" class="dropdown-input" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="button-row lobby-buttons">
+                    <ui:Button text="Leave" name="LeaveLobbyButton" class="menu-button pause-button danger-button half-button" />
+                    <ui:Button text="Ready" name="ReadyButton" class="menu-button pause-button primary-button half-button" />
+                    <ui:Button text="Start Game" name="StartGameButton" class="menu-button pause-button primary-button half-button hidden" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <!-- CONNECTING PANEL -->
+            <ui:VisualElement name="ConnectingPanel" class="menu-panel hidden">
+                <ui:Label text="Connecting..." class="title" />
+                <ui:VisualElement class="loading-spinner">
+                    <ui:VisualElement name="SpinnerDot1" class="spinner-dot" />
+                    <ui:VisualElement name="SpinnerDot2" class="spinner-dot" />
+                    <ui:VisualElement name="SpinnerDot3" class="spinner-dot" />
+                </ui:VisualElement>
+                <ui:Label name="ConnectingStatusLabel" text="Please wait..." class="status-label" />
+                <ui:Button text="Cancel" name="CancelConnectButton" class="menu-button pause-button danger-button" />
+            </ui:VisualElement>
+            
+            <!-- SETTINGS PANEL -->
+            <ui:VisualElement name="SettingsPanel" class="menu-panel hidden">
+                <ui:Label text="Settings" class="title" />
+                
+                <ui:VisualElement class="form-container">
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="Player Name" class="form-label" />
+                        <ui:TextField name="PlayerNameInput" class="text-input" placeholder-text="Enter your name..." max-length="16" />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="Music Volume" class="form-label" />
+                        <ui:Slider name="MusicVolumeSlider" low-value="0" high-value="1" value="0.7" class="slider-input" />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="SFX Volume" class="form-label" />
+                        <ui:Slider name="SFXVolumeSlider" low-value="0" high-value="1" value="1" class="slider-input" />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Label text="Sensitivity" class="form-label" />
+                        <ui:Slider name="SensitivitySlider" low-value="0.1" high-value="3" value="1" class="slider-input" />
+                    </ui:VisualElement>
+                    
+                    <ui:VisualElement class="form-group">
+                        <ui:Toggle name="VibrationToggle" label="Vibration" value="true" class="toggle-input" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="button-row">
+                    <ui:Button text="Back" name="SettingsBackButton" class="menu-button pause-button back-button half-button" />
+                    <ui:Button text="Save" name="SaveSettingsButton" class="menu-button pause-button primary-button half-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
+            <!-- ERROR POPUP -->
+            <ui:VisualElement name="ErrorPopup" class="popup-overlay hidden">
+                <ui:VisualElement class="popup-panel">
+                    <ui:Label name="ErrorTitle" text="Error" class="popup-title error-title" />
+                    <ui:Label name="ErrorMessage" text="Something went wrong." class="popup-message" />
+                    <ui:Button text="OK" name="ErrorOkButton" class="menu-button pause-button primary-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

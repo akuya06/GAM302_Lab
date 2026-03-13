@@ -119,6 +119,37 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &885909447
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 885909448}
+  m_Layer: 0
+  m_Name: SoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &885909448
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 885909447}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 594.2276, y: 344.33777, z: 2.4660144}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1463567688
 GameObject:
   m_ObjectHideFlags: 0
@@ -387,7 +418,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1659040543}
   - component: {fileID: 1659040542}
-  - component: {fileID: 1659040544}
+  - component: {fileID: 1659040545}
   m_Layer: 5
   m_Name: UIDocument
   m_TagString: Untagged
@@ -429,7 +460,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1659040544
+--- !u!114 &1659040545
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -438,14 +469,77 @@ MonoBehaviour:
   m_GameObject: {fileID: 1659040541}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ab2fc851b29133c42aa8c19f180a95b8, type: 3}
+  m_Script: {fileID: 11500000, guid: d4e769af6597f994bb122c8b86782147, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mainMenuBackgroundSprite: {fileID: 21300000, guid: 90a6c487b0480f348b0030e579a6a6de, type: 3}
+  pauseButtonNormalSprite: {fileID: 21300000, guid: fbef618e260ba5040b9609a6aa84f9b1, type: 3}
+  gameSceneName: Game
+--- !u!1 &1910093961
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1910093963}
+  - component: {fileID: 1910093964}
+  - component: {fileID: 1910093966}
+  m_Layer: 0
+  m_Name: FusionNetworkManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1910093963
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1910093961}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1910093964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1910093961}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 692e2b66812b5d54ab9f055f2e82b0e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   gameSceneName: Game
-  mainMenuBackgroundSprite: {fileID: 21300000, guid: 90a6c487b0480f348b0030e579a6a6de, type: 3}
-  pauseButtonNormalSprite: {fileID: 21300000, guid: 12a01e9cc44729e4292e1e924327840d, type: 3}
-  pauseButtonHoverSprite: {fileID: 21300000, guid: 32c97a7f44f980a44b439799cbab82af, type: 3}
-  pauseButtonPressedSprite: {fileID: 21300000, guid: a370808aa089352488bae18e0df937e6, type: 3}
+  defaultMaxPlayers: 4
+--- !u!114 &1910093966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1910093961}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3599696292
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours: []
+  ForceRemoteRenderTimeframe: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -453,3 +547,5 @@ SceneRoots:
   - {fileID: 1492833286}
   - {fileID: 1463567690}
   - {fileID: 1659040543}
+  - {fileID: 1910093963}
+  - {fileID: 885909448}

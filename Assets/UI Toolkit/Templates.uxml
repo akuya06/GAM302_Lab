@@ -1,0 +1,23 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI%20Toolkit/Style.uss?fileID=7433441132597879392&amp;guid=e8fbef8daa7fa3d4ca1b3d1beeb1fdd3&amp;type=3#Style" />
+    
+    <!-- Room Item Template - For use in Room Browser -->
+    <ui:VisualElement name="RoomItemTemplate" class="room-item">
+        <ui:VisualElement class="room-item-info">
+            <ui:Label name="RoomName" text="Room Name" class="room-item-name" />
+            <ui:VisualElement style="flex-direction: row; align-items: center;">
+                <ui:Label name="PlayerCount" text="2/4" class="room-item-players" />
+                <ui:VisualElement name="LockedIcon" class="room-item-locked hidden" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Button name="JoinButton" text="Join" class="menu-button pause-button primary-button room-join-button" />
+    </ui:VisualElement>
+    
+    <!-- Player Item Template - For use in Lobby -->
+    <ui:VisualElement name="PlayerItemTemplate" class="player-item">
+        <ui:VisualElement name="PlayerAvatar" class="player-avatar" />
+        <ui:Label name="PlayerName" text="Player Name" class="player-name" />
+        <ui:Label name="PlayerStatus" text="Ready" class="player-status" />
+        <ui:VisualElement name="ReadyIcon" class="player-ready-icon hidden" />
+    </ui:VisualElement>
+</ui:UXML>

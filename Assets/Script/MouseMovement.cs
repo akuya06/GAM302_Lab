@@ -52,16 +52,9 @@ public class MouseMovement : MonoBehaviour
 
     private void Update()
     {
-        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
-
-        if (isMobile)
-        {
-            HandleTouchLook();
-        }
-        else
-        {
-            HandleMouseLook();
-        }
+        // Xử lý cả chuột (PC test) và touch (Android) cùng lúc
+        HandleMouseLook();
+        HandleTouchLook();
         HandleCameraToggle();
     }
 

@@ -100,16 +100,26 @@ public class PlayerHealth : MonoBehaviour
             Cursor.visible = true;
         }
 
-        // Dừng thời gian nếu muốn
-        if (stopTimeOnDeath)
+        // Dừng thời gian nếu muốn (chỉ cho solo mode)
+        bool isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        
+        if (stopTimeOnDeath && !isOnlineMode)
         {
             Time.timeScale = 0f;
         }
 
-        // bắt đầu đếm ngược restart nếu có text
-        if (restartCountdownText != null)
+        // Sử dụng GameOverController nếu có (hỗ trợ cả online và solo)
+        if (GameOverController.Instance != null)
         {
-            StartCoroutine(RestartCountdownCoroutine());
+            GameOverController.Instance.ShowGameOver();
+        }
+        else
+        {
+            // Fallback: bắt đầu đếm ngược restart nếu có text (chỉ cho solo mode)
+            if (restartCountdownText != null && !isOnlineMode)
+            {
+                StartCoroutine(RestartCountdownCoroutine());
+            }
         }
     }
 
@@ -166,6 +176,7 @@ public class PlayerHealth : MonoBehaviour
 
     private System.Collections.IEnumerator RestartCountdownCoroutine()
     {
+        // Chỉ dành cho solo mode khi không có GameOverController
         float countdown = 5f;
         while (countdown > 0f)
         {
@@ -187,5 +198,25 @@ public class PlayerHealth : MonoBehaviour
         Time.timeScale = 1f;
         var currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
         UnityEngine.SceneManagement.SceneManager.LoadScene(currentScene.name);
+    }
+
+    /// <summary>
+    /// Reset máu về đầy (sử dụng khi restart game)
+    /// </summary>
+    public void ResetHealth()
+    {
+        currentHealth = maxHealth;
+        isDead = false;
+        UpdateHealthUI();
+
+        // Bật lại điều khiển player
+        var movement = GetComponent<PlayerMovement>();
+        if (movement != null) movement.enabled = true;
+
+        var mouseLook = GetComponent<MouseMovement>();
+        if (mouseLook != null) mouseLook.enabled = true;
+
+        var weapon = FindObjectOfType<Weapon>();
+        if (weapon != null) weapon.enabled = true;
     }
 }

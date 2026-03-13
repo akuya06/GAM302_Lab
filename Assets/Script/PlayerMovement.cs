@@ -51,23 +51,11 @@ public class PlayerMovement : MonoBehaviour
         Vector3 move = transform.right * moveInput.x + transform.forward * moveInput.y;
         controller.Move(move * speed * Time.deltaTime);
 
-        bool isMobile = InputModeManager.Instance != null && InputModeManager.Instance.IsMobile;
-
-        // PC: nhảy bằng phím Jump như cũ, Mobile: nhảy bằng nút UI (jumpInput)
-        if (!isMobile)
+        // PC: nhảy bằng phím Jump, Mobile: nhảy bằng nút UI (jumpInput)
+        if ((Input.GetButtonDown("Jump") || jumpInput) && isGrounded)
         {
-            if (Input.GetButtonDown("Jump") && isGrounded)
-            {
-                velocity.y = Mathf.Sqrt(jumpForce * -2f * Physics.gravity.y);
-            }
-        }
-        else
-        {
-            if (jumpInput && isGrounded)
-            {
-                velocity.y = Mathf.Sqrt(jumpForce * -2f * Physics.gravity.y);
-                jumpInput = false;
-            }
+            velocity.y = Mathf.Sqrt(jumpForce * -2f * Physics.gravity.y);
+            jumpInput = false;
         }
 
         velocity.y += Physics.gravity.y * Time.deltaTime;
@@ -88,9 +76,6 @@ public class PlayerMovement : MonoBehaviour
     // Gọi từ nút Jump Mobile (UI Button OnClick)
     public void OnMobileJumpButtonPressed()
     {
-        if (InputModeManager.Instance != null && !InputModeManager.Instance.IsMobile)
-            return;
-
         jumpInput = true;
     }
 }
