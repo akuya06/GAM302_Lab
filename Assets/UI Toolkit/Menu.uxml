@@ -59,6 +59,10 @@
                     <ui:VisualElement class="form-group">
                         <ui:Toggle name="PrivateRoomToggle" label="Private Room" class="toggle-input" />
                     </ui:VisualElement>
+
+                    <ui:VisualElement class="form-group">
+                        <ui:Toggle name="CreateSharedModeToggle" label="Use Shared Mode" class="toggle-input" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
                 
                 <ui:VisualElement class="button-row">
@@ -82,6 +86,10 @@
                     <ui:VisualElement class="form-group">
                         <ui:Label text="Password (if required)" class="form-label" />
                         <ui:TextField name="JoinRoomPasswordInput" class="text-input" placeholder-text="Enter password..." password="true" />
+                    </ui:VisualElement>
+
+                    <ui:VisualElement class="form-group">
+                        <ui:Toggle name="JoinSharedModeToggle" label="Use Shared Mode" class="toggle-input" />
                     </ui:VisualElement>
                 </ui:VisualElement>
                 

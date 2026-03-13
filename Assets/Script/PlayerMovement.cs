@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using Fusion;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -21,8 +22,24 @@ public class PlayerMovement : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        if (ShouldDisableForNetwork())
+        {
+            enabled = false;
+            return;
+        }
+
         controller = GetComponent<CharacterController>();
         playerStun = GetComponent<PlayerStun>();
+    }
+
+    private bool ShouldDisableForNetwork()
+    {
+        var networkObject = GetComponent<NetworkObject>();
+        if (networkObject == null)
+            return false;
+
+        var runner = FindFirstObjectByType<NetworkRunner>();
+        return runner != null && runner.IsRunning;
     }
 
     // Update is called once per frame

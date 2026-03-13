@@ -45,6 +45,7 @@ public class OnlineMenuController : MonoBehaviour
     private VisualElement passwordInputGroup;
     private TextField createRoomPasswordInput;
     private Toggle privateRoomToggle;
+    private Toggle createSharedModeToggle;
     private Button confirmCreateRoomButton;
     private Button createRoomBackButton;
     private Label createRoomStatusLabel;
@@ -52,6 +53,7 @@ public class OnlineMenuController : MonoBehaviour
     // Join Room Elements
     private TextField joinRoomIdInput;
     private TextField joinRoomPasswordInput;
+    private Toggle joinSharedModeToggle;
     private Button confirmJoinRoomButton;
     private Button joinRoomBackButton;
     private Label joinRoomStatusLabel;
@@ -153,18 +155,37 @@ public class OnlineMenuController : MonoBehaviour
 
     private void EnsureNetworkManager()
     {
-        networkManager = FusionNetworkManager.Instance;
+        FusionNetworkManager previousManager = networkManager;
+        FusionNetworkManager resolvedManager = FusionNetworkManager.Instance;
 
-        if (networkManager == null)
+        if (resolvedManager == null)
         {
-            networkManager = FindFirstObjectByType<FusionNetworkManager>();
+            resolvedManager = FindFirstObjectByType<FusionNetworkManager>();
         }
 
-        if (networkManager == null)
+        if (resolvedManager == null)
         {
             Debug.LogWarning("FusionNetworkManager not found in scene. Creating one...");
             var go = new GameObject("FusionNetworkManager");
-            networkManager = go.AddComponent<FusionNetworkManager>();
+            resolvedManager = go.AddComponent<FusionNetworkManager>();
+        }
+
+        if (previousManager == resolvedManager)
+        {
+            networkManager = resolvedManager;
+            return;
+        }
+
+        if (previousManager != null)
+        {
+            UnsubscribeFromNetworkEvents(previousManager);
+        }
+
+        networkManager = resolvedManager;
+
+        if (isActiveAndEnabled && networkManager != null)
+        {
+            SubscribeToNetworkEvents(networkManager);
         }
     }
     
@@ -177,33 +198,43 @@ public class OnlineMenuController : MonoBehaviour
     
     private void SubscribeToNetworkEvents()
     {
-        if (networkManager != null)
+        SubscribeToNetworkEvents(networkManager);
+    }
+
+    private void SubscribeToNetworkEvents(FusionNetworkManager manager)
+    {
+        if (manager != null)
         {
-            networkManager.OnStatusChanged += OnNetworkStatus;
-            networkManager.OnError += OnNetworkError;
-            networkManager.OnJoinedRoom += OnJoinedRoom;
-            networkManager.OnLeftRoom += OnLeftRoom;
-            networkManager.OnPlayerJoinedEvent += OnPlayerJoinedRoom;
-            networkManager.OnPlayerLeftEvent += OnPlayerLeftRoom;
-            networkManager.OnPlayerReadyStateChanged += OnPlayerReadyStateChanged;
-            networkManager.OnGameStarting += OnGameStarting;
-            networkManager.OnRoomListUpdated += OnRoomListReceived;
+            manager.OnStatusChanged += OnNetworkStatus;
+            manager.OnError += OnNetworkError;
+            manager.OnJoinedRoom += OnJoinedRoom;
+            manager.OnLeftRoom += OnLeftRoom;
+            manager.OnPlayerJoinedEvent += OnPlayerJoinedRoom;
+            manager.OnPlayerLeftEvent += OnPlayerLeftRoom;
+            manager.OnPlayerReadyStateChanged += OnPlayerReadyStateChanged;
+            manager.OnGameStarting += OnGameStarting;
+            manager.OnRoomListUpdated += OnRoomListReceived;
         }
     }
     
     private void UnsubscribeFromNetworkEvents()
     {
-        if (networkManager != null)
+        UnsubscribeFromNetworkEvents(networkManager);
+    }
+
+    private void UnsubscribeFromNetworkEvents(FusionNetworkManager manager)
+    {
+        if (manager != null)
         {
-            networkManager.OnStatusChanged -= OnNetworkStatus;
-            networkManager.OnError -= OnNetworkError;
-            networkManager.OnJoinedRoom -= OnJoinedRoom;
-            networkManager.OnLeftRoom -= OnLeftRoom;
-            networkManager.OnPlayerJoinedEvent -= OnPlayerJoinedRoom;
-            networkManager.OnPlayerLeftEvent -= OnPlayerLeftRoom;
-            networkManager.OnPlayerReadyStateChanged -= OnPlayerReadyStateChanged;
-            networkManager.OnGameStarting -= OnGameStarting;
-            networkManager.OnRoomListUpdated -= OnRoomListReceived;
+            manager.OnStatusChanged -= OnNetworkStatus;
+            manager.OnError -= OnNetworkError;
+            manager.OnJoinedRoom -= OnJoinedRoom;
+            manager.OnLeftRoom -= OnLeftRoom;
+            manager.OnPlayerJoinedEvent -= OnPlayerJoinedRoom;
+            manager.OnPlayerLeftEvent -= OnPlayerLeftRoom;
+            manager.OnPlayerReadyStateChanged -= OnPlayerReadyStateChanged;
+            manager.OnGameStarting -= OnGameStarting;
+            manager.OnRoomListUpdated -= OnRoomListReceived;
         }
     }
     
@@ -242,6 +273,7 @@ public class OnlineMenuController : MonoBehaviour
         passwordInputGroup = root.Q<VisualElement>("PasswordInputGroup");
         createRoomPasswordInput = root.Q<TextField>("CreateRoomPasswordInput");
         privateRoomToggle = root.Q<Toggle>("PrivateRoomToggle");
+        createSharedModeToggle = root.Q<Toggle>("CreateSharedModeToggle");
         confirmCreateRoomButton = root.Q<Button>("ConfirmCreateRoomButton");
         createRoomBackButton = root.Q<Button>("CreateRoomBackButton");
         createRoomStatusLabel = root.Q<Label>("CreateRoomStatusLabel");
@@ -249,6 +281,7 @@ public class OnlineMenuController : MonoBehaviour
         // Join Room
         joinRoomIdInput = root.Q<TextField>("JoinRoomIdInput");
         joinRoomPasswordInput = root.Q<TextField>("JoinRoomPasswordInput");
+        joinSharedModeToggle = root.Q<Toggle>("JoinSharedModeToggle");
         confirmJoinRoomButton = root.Q<Button>("ConfirmJoinRoomButton");
         joinRoomBackButton = root.Q<Button>("JoinRoomBackButton");
         joinRoomStatusLabel = root.Q<Label>("JoinRoomStatusLabel");
@@ -434,11 +467,14 @@ public class OnlineMenuController : MonoBehaviour
     
     private async void CreateRoom()
     {
+        EnsureNetworkManager();
+
         string roomName = createRoomNameInput?.value ?? "";
         int maxPlayers = maxPlayersSlider?.value ?? 4;
         bool hasPassword = passwordToggle?.value ?? false;
         string password = hasPassword ? (createRoomPasswordInput?.value ?? "") : "";
         bool isPrivate = privateRoomToggle?.value ?? false;
+        bool useSharedMode = createSharedModeToggle?.value ?? false;
         
         if (hasPassword && string.IsNullOrEmpty(password))
         {
@@ -447,9 +483,9 @@ public class OnlineMenuController : MonoBehaviour
         }
         
         ShowPanel(connectingPanel);
-        SetStatus(createRoomStatusLabel, "Creating room...");
+        SetStatus(createRoomStatusLabel, useSharedMode ? "Creating shared room..." : "Creating room...");
         
-        bool success = await networkManager.CreateRoom(roomName, password, maxPlayers, isPrivate);
+        bool success = await networkManager.CreateRoom(roomName, password, maxPlayers, isPrivate, useSharedMode);
         
         if (!success)
         {
@@ -459,8 +495,11 @@ public class OnlineMenuController : MonoBehaviour
     
     private async void JoinRoom()
     {
+        EnsureNetworkManager();
+
         string roomId = joinRoomIdInput?.value ?? "";
         string password = joinRoomPasswordInput?.value ?? "";
+        bool useSharedMode = joinSharedModeToggle?.value ?? false;
         
         if (string.IsNullOrEmpty(roomId))
         {
@@ -469,9 +508,9 @@ public class OnlineMenuController : MonoBehaviour
         }
         
         ShowPanel(connectingPanel);
-        SetStatus(joinRoomStatusLabel, "Joining room...");
+        SetStatus(joinRoomStatusLabel, useSharedMode ? "Joining shared room..." : "Joining room...");
         
-        bool success = await networkManager.JoinRoom(roomId, password);
+        bool success = await networkManager.JoinRoom(roomId, password, useSharedMode);
         
         if (!success)
         {
@@ -481,6 +520,8 @@ public class OnlineMenuController : MonoBehaviour
     
     private async void QuickMatch()
     {
+        EnsureNetworkManager();
+
         ShowPanel(connectingPanel);
         connectingStatusLabel.text = "Finding match...";
         
@@ -494,6 +535,8 @@ public class OnlineMenuController : MonoBehaviour
     
     private async void LeaveLobby()
     {
+        EnsureNetworkManager();
+
         await networkManager.Disconnect();
         playersInLobby.Clear();
         isReady = false;
@@ -502,6 +545,8 @@ public class OnlineMenuController : MonoBehaviour
     
     private async void CancelConnection()
     {
+        EnsureNetworkManager();
+
         await networkManager.Disconnect();
         ShowPanel(onlineMenuPanel);
     }
@@ -514,6 +559,8 @@ public class OnlineMenuController : MonoBehaviour
     
     private void ToggleReady()
     {
+        EnsureNetworkManager();
+
         isReady = !isReady;
         readyButton.text = isReady ? "Not Ready" : "Ready";
         
@@ -538,6 +585,8 @@ public class OnlineMenuController : MonoBehaviour
     
     private void StartGame()
     {
+        EnsureNetworkManager();
+
         if (!networkManager.IsHost)
         {
             ShowError("Error", "Only the host can start the game!");
@@ -561,6 +610,8 @@ public class OnlineMenuController : MonoBehaviour
     
     private void UpdateGameSettings()
     {
+        EnsureNetworkManager();
+
         if (networkManager.IsHost)
         {
             string difficulty = difficultyDropdown?.value ?? "Normal";
@@ -785,8 +836,12 @@ public class OnlineMenuController : MonoBehaviour
     
     private async void JoinRoomFromBrowser(string roomId)
     {
+        EnsureNetworkManager();
+
+        bool useSharedMode = joinSharedModeToggle?.value ?? false;
+
         ShowPanel(connectingPanel);
-        bool success = await networkManager.JoinRoom(roomId, "");
+        bool success = await networkManager.JoinRoom(roomId, "", useSharedMode);
         
         if (!success)
         {

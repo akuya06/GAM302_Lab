@@ -26,6 +26,7 @@ public class NetworkPlayerController : NetworkBehaviour
     [SerializeField] private Camera playerCamera;
 
     // Synced over network
+    [Networked] private Vector3 _syncedPosition { get; set; }
     [Networked] private Vector3 _syncedVelocity { get; set; }
     [Networked] private float    _syncedYaw     { get; set; }
     [Networked] private float    _syncedPitch   { get; set; }
@@ -61,6 +62,12 @@ public class NetworkPlayerController : NetworkBehaviour
                 // Remote player – disable camera and audio listener
                 DisableRemotePlayerSetup();
             }
+
+            if (Object.HasStateAuthority)
+            {
+                _syncedPosition = transform.position;
+                _syncedYaw = transform.eulerAngles.y;
+            }
         }
         catch (System.Exception e)
         {
@@ -74,6 +81,9 @@ public class NetworkPlayerController : NetworkBehaviour
         try
         {
             if (Runner == null)
+                return;
+
+            if (!Object.HasStateAuthority)
                 return;
 
             if (!GetInput(out NetworkInputData input))
@@ -95,10 +105,13 @@ public class NetworkPlayerController : NetworkBehaviour
                 _verticalVelocity = Mathf.Sqrt(jumpForce * -2f * gravity);
 
             _verticalVelocity += gravity * Runner.DeltaTime;
-            move.y = _verticalVelocity;
 
-            _cc.Move(move * moveSpeed * Runner.DeltaTime);
-            _cc.Move(new Vector3(0, _verticalVelocity, 0) * Runner.DeltaTime);
+            Vector3 horizontalMove = move * moveSpeed;
+            Vector3 finalMove = new Vector3(horizontalMove.x, _verticalVelocity, horizontalMove.z);
+            _cc.Move(finalMove * Runner.DeltaTime);
+
+            _syncedVelocity = finalMove;
+            _syncedPosition = transform.position;
 
             // --- Look (yaw on body, pitch on camera) ---
             _syncedYaw   += input.LookDelta.x * lookSensitivity;
@@ -119,10 +132,17 @@ public class NetworkPlayerController : NetworkBehaviour
     // Called every Unity frame for visual smoothing
     public override void Render()
     {
-        // Smoothly rotate transform for all players (local + remote) for visuals
-        transform.rotation = Quaternion.Euler(0f, _syncedYaw, 0f);
+        if (!Object.HasStateAuthority)
+        {
+            float lerpSpeed = Runner != null ? Runner.DeltaTime * 20f : Time.deltaTime * 20f;
+            transform.position = Vector3.Lerp(transform.position, _syncedPosition, lerpSpeed);
+            transform.rotation = Quaternion.Euler(0f, _syncedYaw, 0f);
+        }
+
         if (cameraHolder != null)
+        {
             cameraHolder.localRotation = Quaternion.Euler(_syncedPitch, 0f, 0f);
+        }
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────────

@@ -64,12 +64,36 @@ public class NetworkInputProvider : MonoBehaviour, INetworkRunnerCallbacks
         );
         
         // Button inputs
-        _firePressed = Input.GetButton("Fire1");
-        _reloadPressed = Input.GetButtonDown("Reload") || Input.GetKeyDown(KeyCode.R);
-        _jumpPressed = Input.GetButtonDown("Jump");
+        _firePressed = SafeGetButton("Fire1");
+        _reloadPressed = SafeGetButtonDown("Reload") || Input.GetKeyDown(KeyCode.R);
+        _jumpPressed = SafeGetButtonDown("Jump") || Input.GetKeyDown(KeyCode.Space);
         _sprintPressed = Input.GetKey(KeyCode.LeftShift);
-        _aimPressed = Input.GetButton("Fire2");
+        _aimPressed = SafeGetButton("Fire2");
         _interactPressed = Input.GetKeyDown(KeyCode.E);
+    }
+
+    private bool SafeGetButton(string buttonName)
+    {
+        try
+        {
+            return Input.GetButton(buttonName);
+        }
+        catch (System.ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private bool SafeGetButtonDown(string buttonName)
+    {
+        try
+        {
+            return Input.GetButtonDown(buttonName);
+        }
+        catch (System.ArgumentException)
+        {
+            return false;
+        }
     }
     
     public void OnInput(NetworkRunner runner, NetworkInput input)

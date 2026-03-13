@@ -44,7 +44,8 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     
     // Current room info
     public bool IsConnected => _runner != null && _runner.IsRunning;
-    public bool IsHost => _runner != null && _runner.IsServer;
+    public bool IsHost => IsHostAuthority(_runner);
+    public bool IsSharedMode => _runner != null && _runner.IsRunning && _runner.GameMode == GameMode.Shared;
     public string CurrentRoomName => _currentRoom?.RoomName ?? "";
     public string CurrentRoomId => _currentRoom?.RoomId ?? "";
     public int PlayerCount => _runner?.ActivePlayers.Count() ?? 0;
@@ -60,6 +61,7 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         public string Password;
         public int MaxPlayers;
         public bool IsPrivate;
+        public bool UseSharedMode;
         public string Difficulty;
         public string Map;
     }
@@ -79,6 +81,14 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         // Load player name
         _playerName = PlayerPrefs.GetString("PlayerName", "Player" + UnityEngine.Random.Range(1000, 9999));
     }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
     
     public void SetPlayerName(string name)
     {
@@ -88,6 +98,17 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     }
     
     public string GetPlayerName() => _playerName;
+
+    private bool IsHostAuthority(NetworkRunner runner)
+    {
+        if (runner == null || !runner.IsRunning)
+            return false;
+
+        if (runner.IsServer)
+            return true;
+
+        return runner.GameMode == GameMode.Shared && runner.IsSharedModeMasterClient;
+    }
 
     private void SafeInvoke(Action callback, string callbackName)
     {
@@ -146,14 +167,14 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>
     /// Creates a new room with the specified settings.
     /// </summary>
-    public async Task<bool> CreateRoom(string roomName, string password, int maxPlayers, bool isPrivate)
+    public async Task<bool> CreateRoom(string roomName, string password, int maxPlayers, bool isPrivate, bool useSharedMode = false)
     {
         if (_runner != null)
         {
             await Disconnect();
         }
         
-        OnStatusChanged?.Invoke("Creating room...");
+        OnStatusChanged?.Invoke(useSharedMode ? "Creating shared room..." : "Creating room...");
         
         try
         {
@@ -161,24 +182,25 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             
             string roomId = GenerateRoomId();
             string displayRoomName = string.IsNullOrWhiteSpace(roomName) ? "Room_" + roomId : roomName.Trim();
-            string sessionName = NormalizeSessionName(displayRoomName);
+            string sessionName = NormalizeSessionName(roomId);
             
             _currentRoom = new RoomInfo
             {
                 RoomName = displayRoomName,
-                RoomId = sessionName,
+                RoomId = roomId,
                 Password = password,
                 MaxPlayers = maxPlayers,
                 IsPrivate = isPrivate,
+                UseSharedMode = useSharedMode,
                 Difficulty = "Normal",
                 Map = "City"
             };
-            
-            var sceneInfo = new NetworkSceneInfo();
+
+            GameMode mode = useSharedMode ? GameMode.Shared : GameMode.Host;
             
             var result = await _runner.StartGame(new StartGameArgs()
             {
-                GameMode = GameMode.Host,
+                GameMode = mode,
                 SessionName = sessionName,
                 PlayerCount = maxPlayers,
                 SceneManager = GetOrCreateSceneManager(),
@@ -209,7 +231,7 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>
     /// Joins an existing room by ID or name.
     /// </summary>
-    public async Task<bool> JoinRoom(string roomId, string password)
+    public async Task<bool> JoinRoom(string roomId, string password, bool useSharedMode = false)
     {
         string roomIdentifier = NormalizeSessionName(roomId);
         if (string.IsNullOrWhiteSpace(roomIdentifier))
@@ -223,15 +245,17 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             await Disconnect();
         }
         
-        OnStatusChanged?.Invoke("Joining room...");
+        OnStatusChanged?.Invoke(useSharedMode ? "Joining shared room..." : "Joining room...");
         
         try
         {
             CreateRunner();
+
+            GameMode mode = useSharedMode ? GameMode.Shared : GameMode.Client;
             
             var result = await _runner.StartGame(new StartGameArgs()
             {
-                GameMode = GameMode.Client,
+                GameMode = mode,
                 SessionName = roomIdentifier,
                 SceneManager = GetOrCreateSceneManager(),
             });
@@ -242,7 +266,8 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
                 {
                     RoomId = roomIdentifier,
                     RoomName = roomIdentifier,
-                    Password = password
+                    Password = password,
+                    UseSharedMode = useSharedMode
                 };
                 
                 OnStatusChanged?.Invoke("Joined room successfully!");
@@ -282,8 +307,8 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
             
             var result = await _runner.StartGame(new StartGameArgs()
             {
-                GameMode = GameMode.AutoHostOrClient,
-                SessionName = "QuickMatch_" + UnityEngine.Random.Range(1, 100),
+                GameMode = GameMode.Shared,
+                SessionName = "QuickMatch_" + UnityEngine.Random.Range(1, 10),
                 PlayerCount = defaultMaxPlayers,
                 SceneManager = GetOrCreateSceneManager(),
             });
@@ -445,6 +470,29 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
 
         _lobbyReadyStates[player] = isReady;
         OnPlayerReadyStateChanged?.Invoke(player, isReady);
+
+        // Authority broadcasts new state to every other peer
+        BroadcastReadyState(player, isReady);
+    }
+
+    private void BroadcastReadyState(PlayerRef player, bool isReady)
+    {
+        if (_runner == null || !_runner.IsRunning || !IsHostAuthority(_runner))
+            return;
+
+        var data = new byte[] { (byte)(player.PlayerId & 0xFF), (byte)(isReady ? 1 : 0) };
+        foreach (var target in _runner.ActivePlayers)
+        {
+            if (target == _runner.LocalPlayer) continue;
+            try
+            {
+                _runner.SendReliableDataToPlayer(target, LobbyReadyBroadcastKey, data);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[FusionNetworkManager] Broadcast ready to {target} failed: {ex.Message}");
+            }
+        }
     }
     
     public void SetGameSettings(string difficulty, string map)
@@ -458,7 +506,7 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     
     private string GenerateRoomId()
     {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        const string chars = "0123456789";
         char[] id = new char[6];
         for (int i = 0; i < 6; i++)
         {
@@ -472,6 +520,7 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
         return new Dictionary<string, SessionProperty>
         {
             { "RoomName", _currentRoom.RoomName },
+            { "RoomId", _currentRoom.RoomId },
             { "HasPassword", !string.IsNullOrEmpty(_currentRoom.Password) },
             { "IsPrivate", _currentRoom.IsPrivate },
             { "Difficulty", _currentRoom.Difficulty ?? "Normal" },
@@ -485,10 +534,25 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     {
         Debug.Log($"Player {player} joined");
 
-        if (runner.IsServer)
+        if (IsHostAuthority(runner))
         {
             bool defaultReady = player == runner.LocalPlayer;
             SetReadyState(player, defaultReady);
+
+            // Push all existing ready states to the newly joined player
+            foreach (var kvp in _lobbyReadyStates)
+            {
+                if (kvp.Key == player) continue;
+                try
+                {
+                    _runner.SendReliableDataToPlayer(player, LobbyReadyBroadcastKey,
+                        new byte[] { (byte)(kvp.Key.PlayerId & 0xFF), (byte)(kvp.Value ? 1 : 0) });
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[FusionNetworkManager] Sync state to new player failed: {ex.Message}");
+                }
+            }
         }
 
         OnPlayerJoinedEvent?.Invoke(player);
@@ -589,7 +653,24 @@ public class FusionNetworkManager : MonoBehaviour, INetworkRunnerCallbacks
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data)
     {
-        if (!runner.IsServer || key != LobbyReadyReliableKey || data.Count < 1 || data.Array == null)
+        // Server/Authority → client: another player's ready state
+        if (key == LobbyReadyBroadcastKey && !IsHostAuthority(runner) && data.Count >= 2 && data.Array != null)
+        {
+            int pid = data.Array[data.Offset];
+            bool ready = data.Array[data.Offset + 1] != 0;
+            foreach (var p in runner.ActivePlayers)
+            {
+                if (p.PlayerId == pid)
+                {
+                    SetReadyState(p, ready);
+                    return;
+                }
+            }
+            return;
+        }
+
+        // Client → server/authority: local player sends own ready state
+        if (!IsHostAuthority(runner) || key != LobbyReadyReliableKey || data.Count < 1 || data.Array == null)
             return;
 
         bool isReady = data.Array[data.Offset] != 0;
