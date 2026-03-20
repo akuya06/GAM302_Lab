@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 using Fusion;
 
@@ -14,8 +13,6 @@ public class PlayerMovement : MonoBehaviour
     public JoystickController joystick; // drag joystick UI here (optional)
     Vector3 velocity;
     bool isGrounded;
-    bool isMoving;
-    private Vector3 lastPosition = Vector3.zero;
     private Vector2 moveInput;
     private bool jumpInput;
 
@@ -30,6 +27,12 @@ public class PlayerMovement : MonoBehaviour
 
         controller = GetComponent<CharacterController>();
         playerStun = GetComponent<PlayerStun>();
+        
+        // Auto-find joystick if not assigned
+        if (joystick == null)
+        {
+            joystick = FindFirstObjectByType<JoystickController>();
+        }
     }
 
     private bool ShouldDisableForNetwork()
@@ -60,6 +63,10 @@ public class PlayerMovement : MonoBehaviour
 
         // Read input: use joystick if available, otherwise keyboard
         // Luôn cho phép WASD cả mobile và PC
+        if (joystick == null)
+        {
+            joystick = FindFirstObjectByType<JoystickController>();
+        }
         Vector2 joystickInput = joystick != null ? joystick.Direction : Vector2.zero;
         float moveX = Input.GetAxisRaw("Horizontal");
         float moveY = Input.GetAxisRaw("Vertical");
@@ -78,16 +85,6 @@ public class PlayerMovement : MonoBehaviour
         velocity.y += Physics.gravity.y * Time.deltaTime;
         controller.Move(velocity * Time.deltaTime);
 
-        // Check if the player is moving
-        if (transform.position != lastPosition)
-        {
-            isMoving = true;
-        }
-        else
-        {
-            isMoving = false;
-        }
-        lastPosition = transform.position;
     }
 
     // Gọi từ nút Jump Mobile (UI Button OnClick)

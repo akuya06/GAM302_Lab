@@ -44,7 +44,8 @@ public class GameOverController : MonoBehaviour
     private void Start()
     {
         // Kiểm tra chế độ chơi (online hay solo)
-        isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        var networkManager = FusionNetworkManager.Instance;
+        isOnlineMode = networkManager != null && networkManager.Runner != null && networkManager.Runner.IsRunning;
 
         // Ẩn panel khi bắt đầu
         if (gameOverPanel != null)
@@ -110,7 +111,8 @@ public class GameOverController : MonoBehaviour
         isWaitingForOthers = false;
 
         // Cập nhật lại trạng thái online/solo
-        isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        var networkManager = FusionNetworkManager.Instance;
+        isOnlineMode = networkManager != null && networkManager.Runner != null && networkManager.Runner.IsRunning;
 
         // Mở khóa chuột
         Cursor.lockState = CursorLockMode.None;
@@ -218,12 +220,12 @@ public class GameOverController : MonoBehaviour
         timeoutCoroutine = StartCoroutine(OnlineTimeoutCoroutine());
     }
 
-    private void HandleOnlineMainMenu()
+    private async void HandleOnlineMainMenu()
     {
         // Ngắt kết nối mạng trước khi về main menu
-        if (FusionNetworkManager.Instance != null)
+        if (FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.Runner != null)
         {
-            _ = FusionNetworkManager.Instance.Disconnect();
+            await FusionNetworkManager.Instance.Runner.Shutdown();
         }
 
         Time.timeScale = 1f;

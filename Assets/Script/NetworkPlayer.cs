@@ -21,21 +21,13 @@ public class NetworkPlayer : NetworkBehaviour
     
     public override void Spawned()
     {
-        _isLocalPlayer = Object.HasInputAuthority;
+        _isLocalPlayer = Object.HasStateAuthority;
         
         if (_isLocalPlayer)
         {
             // Set player name from local settings
             string localName = PlayerPrefs.GetString("PlayerName", $"Player{Random.Range(1000, 9999)}");
-            RPC_SetPlayerName(localName);
-            
-            // Enable local player components
-            EnableLocalComponents();
-        }
-        else
-        {
-            // Disable local-only components for remote players
-            DisableLocalComponents();
+            PlayerName = localName;
         }
         
         // Register with game manager
@@ -47,13 +39,7 @@ public class NetworkPlayer : NetworkBehaviour
         GameManager.Instance?.UnregisterNetworkPlayer(this);
     }
     
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_SetPlayerName(string name)
-    {
-        PlayerName = name;
-    }
-    
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
     public void RPC_AddKill()
     {
         Kills++;
@@ -67,35 +53,6 @@ public class NetworkPlayer : NetworkBehaviour
         {
             playerHealth.TakeDamage(damage);
         }
-    }
-    
-    private void EnableLocalComponents()
-    {
-        if (playerMovement != null)
-            playerMovement.enabled = true;
-        
-        // Enable camera for local player
-        var cam = GetComponentInChildren<Camera>(true);
-        if (cam != null)
-            cam.gameObject.SetActive(true);
-        
-        // Enable audio listener
-        var listener = GetComponentInChildren<AudioListener>(true);
-        if (listener != null)
-            listener.enabled = true;
-    }
-    
-    private void DisableLocalComponents()
-    {
-        // Disable camera for remote players
-        var cam = GetComponentInChildren<Camera>(true);
-        if (cam != null)
-            cam.gameObject.SetActive(false);
-        
-        // Disable audio listener for remote players
-        var listener = GetComponentInChildren<AudioListener>(true);
-        if (listener != null)
-            listener.enabled = false;
     }
     
     public bool IsLocalPlayer => _isLocalPlayer;

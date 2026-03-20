@@ -1,136 +1,134 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
-using Fusion.Sockets;
 using System;
+using Fusion.Sockets;
 
 /// <summary>
-/// Put this on a permanent GameObject in the Game scene.
-/// It listens to player join/leave events and spawns / despawns the player prefab
-/// at the next available spawn point.
+/// Listens to player join events and spawns a player prefab for them.
+/// This should be placed on a GameObject in the scene that will be loaded.
 /// </summary>
 public class NetworkPlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
-    [Header("Player Prefab (must have NetworkObject + NetworkPlayerController)")]
-    [SerializeField] private NetworkObject playerPrefab;
+    [Header("Player Prefab")]
+    [SerializeField] private NetworkObject _playerPrefab;
 
-    [Header("Spawn Points (set in scene, leave empty to spawn at origin)")]
-    [SerializeField] private Transform[] spawnPoints;
+    // Dictionary to track spawned players.
+    private readonly Dictionary<PlayerRef, NetworkObject> _spawnedPlayers = new Dictionary<PlayerRef, NetworkObject>();
 
-    // Maps PlayerRef → spawned NetworkObject so we can despawn cleanly
-    private readonly Dictionary<PlayerRef, NetworkObject> _spawnedPlayers
-        = new Dictionary<PlayerRef, NetworkObject>();
-
-    private NetworkRunner _runner;
-
-    // ── register this object as a callback listener when the runner comes online ──
-    private void OnEnable()
+    private void Start()
     {
-        // find the runner if it already exists (e.g. when scene is loaded)
-        _runner = FindFirstObjectByType<NetworkRunner>();
-        if (_runner != null)
+        // It's good practice to find the runner and add callbacks here.
+        // This handles cases where the spawner is enabled before the runner is ready.
+        var runner = FindFirstObjectByType<NetworkRunner>();
+        if (runner != null)
         {
-            _runner.AddCallbacks(this);
-            SpawnExistingPlayersIfNeeded(_runner);
+            runner.AddCallbacks(this);
+        }
+        else
+        {
+            Debug.LogError("NetworkRunner not found in scene. Player Spawner will not work.");
         }
     }
 
-    private void OnDisable()
-    {
-        _runner?.RemoveCallbacks(this);
-    }
-
-    // ── INetworkRunnerCallbacks ──────────────────────────────────────────────────
-
+    /// <summary>
+    /// This is the most important callback for spawning. It's called on all clients
+    /// when a new player joins, including the host and the joining player.
+    /// </summary>
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        try
+        // In Shared Mode, each client is responsible for spawning its own player object.
+        if (player == runner.LocalPlayer)
         {
-            _runner = runner;
-
-            // Only the host/server spawns objects
-            if (!runner.IsServer) return;
-
-            TrySpawnPlayer(runner, player);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[NetworkPlayerSpawner] Error on player joined: {e.Message}");
+            Debug.Log($"OnPlayerJoined called for local player {player}. Spawning local player object.");
+            SpawnPlayer(runner, player);
         }
     }
 
+    /// <summary>
+    /// When a scene loads, the master client needs to spawn players for everyone
+    /// who is already in the session.
+    /// </summary>
+    public void OnSceneLoadDone(NetworkRunner runner)
+    {
+        if (runner.LocalPlayer != PlayerRef.None)
+        {
+            Debug.Log($"Scene loaded. Ensuring local player object exists for {runner.LocalPlayer}.");
+            SpawnPlayer(runner, runner.LocalPlayer);
+        }
+    }
+
+    private void SpawnPlayer(NetworkRunner runner, PlayerRef player)
+    {
+        if (player != runner.LocalPlayer)
+        {
+            return;
+        }
+
+        // Nếu đã có player object trong runner thì không spawn lại.
+        var existingPlayerObject = runner.GetPlayerObject(player);
+        if (existingPlayerObject != null)
+        {
+            if (!_spawnedPlayers.ContainsKey(player))
+            {
+                _spawnedPlayers[player] = existingPlayerObject;
+            }
+            return;
+        }
+
+        // Check if the player has already been spawned.
+        if (_spawnedPlayers.ContainsKey(player))
+        {
+            return;
+        }
+
+        // Get a random spawn position.
+        Vector3 spawnPosition = new Vector3(UnityEngine.Random.Range(-3, 3), 1, UnityEngine.Random.Range(-3, 3));
+
+        // Spawn the local player's prefab with input authority assigned to this player.
+        NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
+
+        // Runner should automatically assign the LocalPlayerObject.
+
+        // Keep track of the spawned player.
+        _spawnedPlayers.Add(player, networkPlayerObject);
+        Debug.Log($"Spawned player {player.PlayerId} at {spawnPosition}");
+    }
+
+    /// <summary>
+    /// When a player leaves, the master client despawns their object.
+    /// </summary>
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
-        if (_spawnedPlayers.TryGetValue(player, out var obj))
+        if (_spawnedPlayers.TryGetValue(player, out NetworkObject networkObject))
         {
-            runner.Despawn(obj);
+            if (networkObject != null && networkObject.HasStateAuthority)
+            {
+                runner.Despawn(networkObject);
+            }
+
             _spawnedPlayers.Remove(player);
-            Debug.Log($"[NetworkPlayerSpawner] Despawned player {player}");
+            Debug.Log($"Player {player.PlayerId} left. Removed tracked player object.");
         }
-    }
 
-    // Returns a spread-out spawn position based on player index
-    private Vector3 GetSpawnPosition(PlayerRef player)
-    {
-        if (spawnPoints != null && spawnPoints.Length > 0)
+        if (player == runner.LocalPlayer)
         {
-            int index = player.PlayerId % spawnPoints.Length;
-            return spawnPoints[index].position;
-        }
-
-        // Default: spread players apart by 2 m on the X axis
-        return new Vector3(player.PlayerId * 2f, 0f, 0f);
-    }
-
-    private void SpawnExistingPlayersIfNeeded(NetworkRunner runner)
-    {
-        if (runner == null || !runner.IsServer)
-            return;
-
-        foreach (var player in runner.ActivePlayers)
-        {
-            TrySpawnPlayer(runner, player);
+            runner.SetPlayerObject(player, null);
         }
     }
 
-    private void TrySpawnPlayer(NetworkRunner runner, PlayerRef player)
-    {
-        if (_spawnedPlayers.ContainsKey(player))
-            return;
-
-        if (playerPrefab == null)
-        {
-            Debug.LogError("[NetworkPlayerSpawner] playerPrefab is not assigned!");
-            return;
-        }
-
-        Vector3 spawnPos = GetSpawnPosition(player);
-        Quaternion spawnRot = Quaternion.identity;
-
-        var spawnedObj = runner.Spawn(
-            playerPrefab,
-            spawnPos,
-            spawnRot,
-            player
-        );
-
-        _spawnedPlayers[player] = spawnedObj;
-        Debug.Log($"[NetworkPlayerSpawner] Spawned player {player} at {spawnPos}");
-    }
-
-    // ── Required stubs ───────────────────────────────────────────────────────────
+    // --- Unused Callbacks ---
     public void OnInput(NetworkRunner runner, NetworkInput input) { }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
     public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
-    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) => request.Accept();
+    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
     public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
-    public void OnSceneLoadDone(NetworkRunner runner) { }
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }

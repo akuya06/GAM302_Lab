@@ -79,8 +79,10 @@ public class MouseMovement : MonoBehaviour
         // Tính giá trị aimPitch từ 0 đến 1 dựa trên góc nhìn lên/xuống
         float aimPitch = Mathf.InverseLerp(verticalRotationClampMin, verticalRotationClampMax, verticalRotation);
         aimPitch = 1f - aimPitch; // đảo ngược giá trị
-        animator.SetFloat("AimPitch", aimPitch);
-        Debug.Log("AimPitch: " + aimPitch);
+        if (animator != null)
+        {
+            animator.SetFloat("AimPitch", aimPitch);
+        }
         // Quay nhân vật theo trục Y (nhân vật xoay trái/phải)
         horizontalRotation += mouseX;
         ApplyRotation();

@@ -19,17 +19,13 @@ public class NetworkRunnerHandler : MonoBehaviour, INetworkRunnerCallbacks
         _runner = FindFirstObjectByType<NetworkRunner>();
         if (_runner != null)
         {
-            _runner.AddCallbacks(this);
             InitializeNetworkComponents();
         }
     }
 
     private void OnDisable()
     {
-        if (_runner != null)
-        {
-            _runner.RemoveCallbacks(this);
-        }
+        // Không remove callbacks vì FusionNetworkManager quản lý
     }
 
     /// <summary>

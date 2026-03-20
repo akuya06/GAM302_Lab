@@ -22,10 +22,23 @@ public class PauseCanvasController : MonoBehaviour
     public Button pcModeButton;
     public Button mobileModeButton;
 
+    [Header("Control Mode")]
+    [Tooltip("Toggle mode trong settings: Off = PC, On = Mobile")]
+    public Toggle controlModeToggle;
+    [Tooltip("Danh sách UI chỉ dùng cho Mobile (joystick, bắn, nạp đạn, nhảy, ...)")]
+    public GameObject[] mobileOnlyControls;
+
     [SerializeField]
     private string mainMenuSceneName = "MainMenu";
 
     private bool isPaused = false;
+    private bool isInitializingToggle = false;
+    private bool waitingInitialModeSelection = false;
+    private ControlMode currentControlMode = ControlMode.PC;
+
+    private PlayerMovement cachedPlayerMovement;
+    private MouseMovement cachedMouseMovement;
+    private Weapon cachedWeapon;
 
     public bool IsPaused()
     {
@@ -43,10 +56,20 @@ public class PauseCanvasController : MonoBehaviour
         if (backFromSettingsButton != null) backFromSettingsButton.onClick.AddListener(OnBackFromSettingsClicked);
         if (pcModeButton != null) pcModeButton.onClick.AddListener(OnPCModeClicked);
         if (mobileModeButton != null) mobileModeButton.onClick.AddListener(OnMobileModeClicked);
+        if (controlModeToggle != null) controlModeToggle.onValueChanged.AddListener(OnControlModeToggleChanged);
 
         // Ẩn panel khi bắt đầu
         if (pausePanel != null) pausePanel.SetActive(false);
         if (settingsPanel != null) settingsPanel.SetActive(false);
+
+        bool hasSavedMode = ControlModeSettings.HasSavedMode();
+        currentControlMode = ControlModeSettings.LoadOrDefault(ControlMode.PC);
+        ApplyControlMode(currentControlMode, false);
+
+        if (!hasSavedMode)
+        {
+            EnterInitialModeSelection();
+        }
     }
 
     private void OnDisable()
@@ -60,10 +83,16 @@ public class PauseCanvasController : MonoBehaviour
         if (backFromSettingsButton != null) backFromSettingsButton.onClick.RemoveListener(OnBackFromSettingsClicked);
         if (pcModeButton != null) pcModeButton.onClick.RemoveListener(OnPCModeClicked);
         if (mobileModeButton != null) mobileModeButton.onClick.RemoveListener(OnMobileModeClicked);
+        if (controlModeToggle != null) controlModeToggle.onValueChanged.RemoveListener(OnControlModeToggleChanged);
+
+        ControlModeSettings.Save(currentControlMode);
     }
 
     private void Update()
     {
+        if (waitingInitialModeSelection)
+            return;
+
         // Nhấn ESC để pause/resume
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -115,7 +144,8 @@ public class PauseCanvasController : MonoBehaviour
 
     private void OnRestartClicked()
     {
-        bool isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        var networkManager = FusionNetworkManager.Instance;
+        bool isOnlineMode = networkManager != null && networkManager.Runner != null && networkManager.Runner.IsRunning;
         
         if (isOnlineMode)
         {
@@ -135,17 +165,20 @@ public class PauseCanvasController : MonoBehaviour
         // Mở panel Settings (để chọn PC/Mobile)
         if (pausePanel != null) pausePanel.SetActive(false);
         if (settingsPanel != null) settingsPanel.SetActive(true);
+        if (backFromSettingsButton != null)
+            backFromSettingsButton.gameObject.SetActive(true);
     }
 
-    private void OnQuitClicked()
+    private async void OnQuitClicked()
     {
         // Kiểm tra online mode để disconnect trước khi về main menu
-        bool isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        var networkManager = FusionNetworkManager.Instance;
+        bool isOnlineMode = networkManager != null && networkManager.Runner != null && networkManager.Runner.IsRunning;
         
         if (isOnlineMode)
         {
             // Ngắt kết nối mạng trước khi về main menu
-            _ = FusionNetworkManager.Instance.Disconnect();
+            await networkManager.Runner.Shutdown();
         }
         
         // Có thể về main menu hoặc thoát hẳn game
@@ -167,6 +200,9 @@ public class PauseCanvasController : MonoBehaviour
 
     private void OnBackFromSettingsClicked()
     {
+        if (waitingInitialModeSelection)
+            return;
+
         // Quay lại menu pause chính
         if (settingsPanel != null) settingsPanel.SetActive(false);
         if (pausePanel != null) pausePanel.SetActive(true);
@@ -174,35 +210,122 @@ public class PauseCanvasController : MonoBehaviour
 
     private void OnPCModeClicked()
     {
-        // Mode switching removed - cả PC và Mobile input đều hoạt động cùng lúc
+        ApplyControlMode(ControlMode.PC, true);
+        CompleteInitialSelectionIfNeeded();
     }
 
     private void OnMobileModeClicked()
     {
-        // Mode switching removed - cả PC và Mobile input đều hoạt động cùng lúc
+        ApplyControlMode(ControlMode.Mobile, true);
+        CompleteInitialSelectionIfNeeded();
+    }
+
+    private void OnControlModeToggleChanged(bool isMobile)
+    {
+        if (isInitializingToggle)
+            return;
+
+        ApplyControlMode(isMobile ? ControlMode.Mobile : ControlMode.PC, true);
+        CompleteInitialSelectionIfNeeded();
+    }
+
+    private void EnterInitialModeSelection()
+    {
+        waitingInitialModeSelection = true;
+        isPaused = true;
+
+        Time.timeScale = 0f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        DisablePlayerControls();
+
+        if (pausePanel != null) pausePanel.SetActive(false);
+        if (settingsPanel != null) settingsPanel.SetActive(true);
+        if (backFromSettingsButton != null)
+            backFromSettingsButton.gameObject.SetActive(false);
+    }
+
+    private void CompleteInitialSelectionIfNeeded()
+    {
+        if (!waitingInitialModeSelection)
+            return;
+
+        waitingInitialModeSelection = false;
+
+        if (backFromSettingsButton != null)
+            backFromSettingsButton.gameObject.SetActive(true);
+
+        Resume();
+    }
+
+    private void ApplyControlMode(ControlMode mode, bool saveToFile)
+    {
+        currentControlMode = mode;
+
+        bool isMobile = mode == ControlMode.Mobile;
+        ApplyMobileControlsVisibility(isMobile);
+
+        if (controlModeToggle != null)
+        {
+            isInitializingToggle = true;
+            controlModeToggle.isOn = isMobile;
+            isInitializingToggle = false;
+        }
+
+        if (saveToFile)
+        {
+            ControlModeSettings.Save(mode);
+        }
+    }
+
+    private void ApplyMobileControlsVisibility(bool isMobile)
+    {
+        if (mobileOnlyControls == null)
+            return;
+
+        for (int i = 0; i < mobileOnlyControls.Length; i++)
+        {
+            if (mobileOnlyControls[i] != null)
+            {
+                mobileOnlyControls[i].SetActive(isMobile);
+            }
+        }
     }
 
     private void DisablePlayerControls()
     {
-        var playerMovement = FindObjectOfType<PlayerMovement>();
-        if (playerMovement != null) playerMovement.enabled = false;
+        CachePlayerControlReferences();
 
-        var mouseMovement = FindObjectOfType<MouseMovement>();
-        if (mouseMovement != null) mouseMovement.enabled = false;
-
-        var weapon = FindObjectOfType<Weapon>();
-        if (weapon != null) weapon.enabled = false;
+        if (cachedPlayerMovement != null) cachedPlayerMovement.enabled = false;
+        if (cachedMouseMovement != null) cachedMouseMovement.enabled = false;
+        if (cachedWeapon != null) cachedWeapon.enabled = false;
     }
 
     private void EnablePlayerControls()
     {
-        var playerMovement = FindObjectOfType<PlayerMovement>();
-        if (playerMovement != null) playerMovement.enabled = true;
+        CachePlayerControlReferences();
 
-        var mouseMovement = FindObjectOfType<MouseMovement>();
-        if (mouseMovement != null) mouseMovement.enabled = true;
+        if (cachedPlayerMovement != null) cachedPlayerMovement.enabled = true;
+        if (cachedMouseMovement != null) cachedMouseMovement.enabled = true;
+        if (cachedWeapon != null) cachedWeapon.enabled = true;
+    }
 
-        var weapon = FindObjectOfType<Weapon>();
-        if (weapon != null) weapon.enabled = true;
+    private void CachePlayerControlReferences()
+    {
+        if (cachedPlayerMovement == null)
+        {
+            cachedPlayerMovement = FindFirstObjectByType<PlayerMovement>();
+        }
+
+        if (cachedMouseMovement == null)
+        {
+            cachedMouseMovement = FindFirstObjectByType<MouseMovement>();
+        }
+
+        if (cachedWeapon == null)
+        {
+            cachedWeapon = FindFirstObjectByType<Weapon>();
+        }
     }
 }

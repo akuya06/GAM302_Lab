@@ -92,9 +92,11 @@ public class NetworkLobbyManager : NetworkBehaviour
         
         // Get the game scene based on map selection
         string sceneName = GetSceneForMap(Map.ToString());
-        
-        // Load the game scene
-        SceneManager.LoadScene(sceneName);
+
+        if (Runner != null && Runner.IsRunning)
+        {
+            Runner.LoadScene(sceneName, LoadSceneMode.Single, LocalPhysicsMode.None, true);
+        }
     }
     
     private string GetSceneForMap(string map)

@@ -101,7 +101,8 @@ public class PlayerHealth : MonoBehaviour
         }
 
         // Dừng thời gian nếu muốn (chỉ cho solo mode)
-        bool isOnlineMode = FusionNetworkManager.Instance != null && FusionNetworkManager.Instance.IsConnected;
+        var networkManager = FusionNetworkManager.Instance;
+        bool isOnlineMode = networkManager != null && networkManager.Runner != null && networkManager.Runner.IsRunning;
         
         if (stopTimeOnDeath && !isOnlineMode)
         {

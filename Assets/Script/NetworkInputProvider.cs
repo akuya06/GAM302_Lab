@@ -1,125 +1,38 @@
 using Fusion;
-using Fusion.Sockets;
 using UnityEngine;
+using Fusion.Sockets;
 
 /// <summary>
-/// Input data structure for network synchronization.
-/// Used by Photon Fusion to sync player inputs.
+/// Defines the input structure for the player. This is sent over the network.
 /// </summary>
 public struct NetworkInputData : INetworkInput
 {
-    // Movement
-    public Vector2 MoveDirection;
+    public Vector3 MoveDirection;
     public Vector2 LookDelta;
-    
-    // Actions
-    public NetworkButtons Buttons;
-    
-    // Button indices
-    public const int BUTTON_FIRE = 0;
-    public const int BUTTON_RELOAD = 1;
-    public const int BUTTON_JUMP = 2;
-    public const int BUTTON_SPRINT = 3;
-    public const int BUTTON_AIM = 4;
-    public const int BUTTON_INTERACT = 5;
 }
 
 /// <summary>
-/// Component that captures local input and provides it to the network.
-/// Attach to player prefab or a persistent game object.
+/// Captures local player input and provides it to the Fusion network runner.
+/// This should be placed on a persistent object in the scene (like the NetworkManager).
 /// </summary>
 public class NetworkInputProvider : MonoBehaviour, INetworkRunnerCallbacks
 {
-    [Header("Input Settings")]
-    [SerializeField] private float lookSensitivity = 1f;
-    
-    private NetworkRunner _runner;
-    private Vector2 _moveInput;
-    private Vector2 _lookInput;
-    private bool _firePressed;
-    private bool _reloadPressed;
-    private bool _jumpPressed;
-    private bool _sprintPressed;
-    private bool _aimPressed;
-    private bool _interactPressed;
-    
-    void Update()
-    {
-        // Capture input every frame
-        CaptureInput();
-    }
-    
-    private void CaptureInput()
-    {
-        // Movement input
-        _moveInput = new Vector2(
-            Input.GetAxisRaw("Horizontal"),
-            Input.GetAxisRaw("Vertical")
-        );
-        
-        // Look input (mouse or touch)
-        _lookInput = new Vector2(
-            Input.GetAxis("Mouse X") * lookSensitivity,
-            Input.GetAxis("Mouse Y") * lookSensitivity
-        );
-        
-        // Button inputs
-        _firePressed = SafeGetButton("Fire1");
-        _reloadPressed = SafeGetButtonDown("Reload") || Input.GetKeyDown(KeyCode.R);
-        _jumpPressed = SafeGetButtonDown("Jump") || Input.GetKeyDown(KeyCode.Space);
-        _sprintPressed = Input.GetKey(KeyCode.LeftShift);
-        _aimPressed = SafeGetButton("Fire2");
-        _interactPressed = Input.GetKeyDown(KeyCode.E);
-    }
-
-    private bool SafeGetButton(string buttonName)
-    {
-        try
-        {
-            return Input.GetButton(buttonName);
-        }
-        catch (System.ArgumentException)
-        {
-            return false;
-        }
-    }
-
-    private bool SafeGetButtonDown(string buttonName)
-    {
-        try
-        {
-            return Input.GetButtonDown(buttonName);
-        }
-        catch (System.ArgumentException)
-        {
-            return false;
-        }
-    }
-    
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         var data = new NetworkInputData();
-        
-        data.MoveDirection = _moveInput;
-        data.LookDelta = _lookInput;
-        
-        // Set buttons
-        data.Buttons.Set(NetworkInputData.BUTTON_FIRE, _firePressed);
-        data.Buttons.Set(NetworkInputData.BUTTON_RELOAD, _reloadPressed);
-        data.Buttons.Set(NetworkInputData.BUTTON_JUMP, _jumpPressed);
-        data.Buttons.Set(NetworkInputData.BUTTON_SPRINT, _sprintPressed);
-        data.Buttons.Set(NetworkInputData.BUTTON_AIM, _aimPressed);
-        data.Buttons.Set(NetworkInputData.BUTTON_INTERACT, _interactPressed);
-        
+
+        // Get movement input from keyboard
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+        data.MoveDirection = new Vector3(horizontal, 0, vertical);
+
+        // Get mouse delta
+        data.LookDelta = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
+
         input.Set(data);
-        
-        // Reset one-shot inputs
-        _reloadPressed = false;
-        _jumpPressed = false;
-        _interactPressed = false;
     }
-    
-    #region INetworkRunnerCallbacks (Required stubs)
+
+    // --- Unused Callbacks ---
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player) { }
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
@@ -138,5 +51,4 @@ public class NetworkInputProvider : MonoBehaviour, INetworkRunnerCallbacks
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-    #endregion
 }

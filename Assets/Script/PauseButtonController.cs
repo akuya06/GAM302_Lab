@@ -17,6 +17,6 @@ public class PauseButtonController : MonoBehaviour
     {
         if (pauseMenuCanvas != null)
             pauseMenuCanvas.SetActive(true);
-        Time.timeScale = 0f;
+        
     }
 }
